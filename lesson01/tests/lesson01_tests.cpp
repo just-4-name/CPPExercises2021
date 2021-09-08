@@ -77,3 +77,26 @@ TEST(lesson01, solveSquare1) {
     GTEST_ASSERT_EQ(x0, 1.5); // сверяем что найденный корень правильный
 }
 
+TEST(lesson01, solveSquare2) {
+    // 1*x^2 + 4*x + 4 = 0
+    std::vector<double> xs = solveSquare(1.0, 4.0, 4.0);
+    GTEST_ASSERT_EQ(xs.size(), 1); // сверяем что найден ровно один корень
+    double x0 = xs[0];
+    GTEST_ASSERT_EQ(x0, -2.0); // сверяем что найденный корень правильный
+}
+
+TEST(lesson01, solveSquare3) {
+    // 1*x^2 - 3*x + 2 = 0
+    std::vector<double> xs = solveSquare(1.0, -3.0, 2.0);
+    GTEST_ASSERT_EQ(xs.size(), 2); // сверяем что найден ровно один корень
+    double x0 = xs[0];
+    double x1 = xs[1];
+    GTEST_ASSERT_EQ(x0, 1.0); // сверяем что найденный корень правильный
+    GTEST_ASSERT_EQ(x1, 2.0);
+}
+
+TEST(lesson01, solveSquare4) {
+    // 100*x^2 + 1*x + 1 = 0
+    std::vector<double> xs = solveSquare(100.0, 1.0, 1.0);
+    GTEST_ASSERT_EQ(xs.size(), 0); // сверяем что найден ровно один корень
+}
