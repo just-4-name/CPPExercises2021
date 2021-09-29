@@ -146,3 +146,19 @@ Mat makeBlackPixelsRand(Mat img){
         }
     }return img;
 }
+
+
+
+vector<vector<int>> dilate(vector<vector<int>> mask, int r){ //0 - обьект
+    for(int i=0;i<mask.size();++i){
+        for(int j = 0;j<mask[i].size();++j){
+            for(int dy = -r;dy<=r;++dy){
+                for(int dx = -r;dx<=r;++dx){
+                    int y = i + dy;
+                    int x = j + dx;
+                    if(i<0 || i>=mask.size()) continue;
+                }
+            }
+        }
+    }return mask;
+}

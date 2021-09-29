@@ -27,24 +27,24 @@ void task1() {
     if (!std::filesystem::exists(resultsDir)) { // если папка еще не создана
         std::filesystem::create_directory(resultsDir); // то создаем ее
     }
-    cv::Mat blueUnicorn = makeAllBlackPixelsBlue(imgUnicorn); // TODO реализуйте функцию которая каждый пиксель картинки который близок к белому - делает синим
+    cv::Mat blueUnicorn = makeAllBlackPixelsBlue(imgUnicorn.clone()); // TODO реализуйте функцию которая каждый пиксель картинки который близок к белому - делает синим
     std::string filename = resultsDir + "01_blue_unicorn.jpg"; // удобно в начале файла писать число, чтобы файлы были в том порядке в котором мы их создали
     cv::imwrite(filename, blueUnicorn);
 
-    cv::Mat invertedUnicorn = invertImageColors(imgUnicorn); // TODO реализуйте функцию которая каждый цвет картинки инвертирует
+    cv::Mat invertedUnicorn = invertImageColors(imgUnicorn.clone()); // TODO реализуйте функцию которая каждый цвет картинки инвертирует
     // TODO сохраните резльутат в ту же папку, но файл назовите "02_inv_unicorn.jpg"
     string filename2 = resultsDir + "02_inv_unicorn.jpg";
     imwrite(filename2, invertedUnicorn);
 
     cv::Mat castle = imread("lesson03/data/castle.png"); // TODO считайте с диска картинку с замком - castle.png
-    cv::Mat unicornInCastle = addBackgroundInsteadOfBlackPixels(imgUnicorn, castle); // TODO реализуйте функцию которая все черные пиксели картинки-объекта заменяет на пиксели с картинки-фона
+    cv::Mat unicornInCastle = addBackgroundInsteadOfBlackPixels(imgUnicorn.clone(), castle); // TODO реализуйте функцию которая все черные пиксели картинки-объекта заменяет на пиксели с картинки-фона
     // TODO сохраните результат в ту же папку, назовите "03_unicorn_castle.jpg"
     string filename3 = resultsDir + "03_unicorn_castle.jpg";
     imwrite(filename3, unicornInCastle);
 
     cv::Mat largeCastle = imread("lesson03/data/castle_large.jpg");// TODO считайте с диска картинку с большим замком - castle_large.png
     rassert(!largeCastle.empty(), 3428374817241);
-    cv::Mat unicornInLargeCastle = addBackgroundInsteadOfBlackPixelsLargeBackground(imgUnicorn, largeCastle); // TODO реализуйте функцию так, чтобы нарисовался объект ровно по центру на данном фоне, при этом черные пиксели объекта не должны быть нарисованы
+    cv::Mat unicornInLargeCastle = addBackgroundInsteadOfBlackPixelsLargeBackground(imgUnicorn.clone(), largeCastle.clone()); // TODO реализуйте функцию так, чтобы нарисовался объект ровно по центру на данном фоне, при этом черные пиксели объекта не должны быть нарисованы
     // TODO сохраните результат - "04_unicorn_large_castle.jpg"
     string filename4 = resultsDir + "04_unicorn_large_castle.jpg";
      imwrite(filename4, unicornInLargeCastle);
@@ -58,7 +58,7 @@ void task1() {
     // 5) при этом каждый единорог рисуется по случайным координатам
     // 6) результат сохраните - "05_unicorns_otake.jpg"
 
-    Mat nUnicorns = drawNUnicorns(imgUnicorn, largeCastle, rand()%100);
+    Mat nUnicorns = drawNUnicorns(imgUnicorn.clone(), largeCastle.clone(), rand()%100);
     imwrite(resultsDir + "05_N_Unicorns.jpg", nUnicorns);
 
     // TODO растяните картинку единорога так, чтобы она заполнила полностью большую картинку с замком "06_unicorn_upscale.jpg"
@@ -84,7 +84,7 @@ void task2() {
         // иногда удобно рисовать картинку в окне:
         cv::imshow("lesson03 window", imgUnicorn);
         // TODO сделайте функцию которая будет все черные пиксели (фон) заменять на случайный цвет (аккуратно, будет хаотично и ярко мигать, не делайте если вам это противопоказано)
-        imgUnicorn = makeBlackPixelsRand(imgUnicorn);
+        imgUnicorn = makeBlackPixelsRand(imgUnicorn.clone());
     }
 }
 
@@ -173,14 +173,65 @@ void task4() {
     // TODO подумайте, а как бы отмаскировать фон целиком несмотря на то что он разноцветный?
     // а как бы вы справились с тем чтобы из фотографии с единорогом и фоном удалить фон зная как выглядит фон?
     // а может сделать тот же трюк с вебкой - выйти из вебки в момент запуска программы, и первый кадр использовать как кадр-эталон с фоном который надо удалять (делать прозрачным)
+    cv::VideoCapture video(0);
+
+    rassert(video.isOpened(), 3423948392481); // проверяем что видео получилось открыть
+
+    MyVideoContent content; // здесь мы будем хранить всякие полезности - например последний видео кадр, координаты последнего клика и т.п.
+    Mat imgLargeCastle = imread("lesson03/data/castle_large.jpg");
+    int width = 1024;
+    int height = 768;
+    Scalar color(0, 0, 0);
+    Mat castleUpscale(height, width, CV_8UC3, color);
+    for(int i = 0; i < castleUpscale.rows; ++i){
+        for(int j = 0;j < castleUpscale.cols;++j){
+            castleUpscale.at<Vec3b>(i,j) = imgLargeCastle.at<Vec3b>(min(imgLargeCastle.rows - 1, (int)floor(1.0*i*imgLargeCastle.rows/castleUpscale.rows)),
+                                                                    min(imgLargeCastle.cols-1, (int)floor(1.0*j*imgLargeCastle.cols/castleUpscale.cols)));
+        }
+    }
+
+    //imshow("lesson03_window", castleUpscale);
+
+
+    while (video.isOpened()) { // пока видео не закрылось - бежим по нему
+        bool isSuccess = video.read(content.frame); // считываем из видео очередной кадр
+        rassert(isSuccess, 348792347819); // проверяем что считывание прошло успешно
+        rassert(!content.frame.empty(), 3452314124643); // проверяем что кадр не пустой
+        for(int i = 0;i<content.pixels.size();++i){
+            content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first) = castleUpscale.at<Vec3b> (content.pixels[i].second, content.pixels[i].first);
+        }
+        for(int y = 0;y<content.frame.rows; ++y){
+            for(int x = 0;x<content.frame.cols;++x){
+                for(int i = 0;i<content.pixels.size();++i){
+                    Vec3b color1 = content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first);
+                    Vec3b color2 = content.frame.at<Vec3b>(y,x);
+                    if(abs(color1[0] - color2[0]) < 10 && abs(color1[1] - color2[1]) < 10 && abs(color1[2] - color2[2]) < 10){
+                        content.frame.at<Vec3b>(y,x) = castleUpscale.at<Vec3b>(y,x);
+                    }
+                }
+            }
+        }
+        if(content.inv%2 == 1){
+            content.frame = invertImageColors(content.frame);
+        }
+
+
+        cv::imshow("video", content.frame); // покаызваем очередной кадр в окошке
+        cv::setMouseCallback("video", onMouseClick, &content); // делаем так чтобы функция выше (onMouseClick) получала оповещение при каждом клике мышкой
+
+        int key = cv::waitKey(10);
+        if(key == 32 || key == 27){
+            return;
+        }
+    }
 }
 
 int main() {
     try {
-        task1();
+        //task1();
         //task2();
         //task3();
-//        task4();
+       task4();
         return 0;
     } catch (const std::exception &e) {
         std::cout << "Exception! " << e.what() << std::endl;
