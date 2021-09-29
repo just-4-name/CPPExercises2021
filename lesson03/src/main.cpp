@@ -3,6 +3,7 @@
 #include <libutils/rasserts.h>
 #include <cstdlib>
 #include <ctime>
+#include<algorithm>
 
 #include "helper_functions.h"
 
@@ -61,6 +62,13 @@ void task1() {
     imwrite(resultsDir + "05_N_Unicorns.jpg", nUnicorns);
 
     // TODO растяните картинку единорога так, чтобы она заполнила полностью большую картинку с замком "06_unicorn_upscale.jpg"
+    Mat unicornUpscale = largeCastle;
+    for(int i = 0; i < largeCastle.rows; ++i){
+        for(int j = 0;j < largeCastle.cols;++j){
+            unicornUpscale.at<Vec3b>(i,j) = imgUnicorn.at<Vec3b>(min(imgUnicorn.rows - 1, (int)floor(1.0*i*imgUnicorn.rows/largeCastle.rows)), min(imgUnicorn.cols-1, (int)floor(1.0*j*imgUnicorn.cols/largeCastle.cols)));
+        }
+    }
+    imwrite(resultsDir+"06_unicornUpscale.jpg", unicornUpscale);
 }
 
 void task2() {
@@ -169,9 +177,9 @@ void task4() {
 
 int main() {
     try {
-        //task1();
+        task1();
         //task2();
-        task3();
+        //task3();
 //        task4();
         return 0;
     } catch (const std::exception &e) {
