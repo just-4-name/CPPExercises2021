@@ -136,11 +136,7 @@ void task3() {
         bool isSuccess = video.read(content.frame); // считываем из видео очередной кадр
         rassert(isSuccess, 348792347819); // проверяем что считывание прошло успешно
         rassert(!content.frame.empty(), 3452314124643); // проверяем что кадр не пустой
-        for(int i = 0;i<content.pixels.size();++i){
-            content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first) = Vec3b(0,0,255);
-        }
         if(content.inv%2 == 1){
-            //content.inv = 0;
             content.frame = invertImageColors(content.frame);
         }
 
@@ -153,13 +149,6 @@ void task3() {
         if(key == 32 || key == 27){
             return;
         }
-        // TODO добавьте завершение программы в случае если нажат Escape (придумайте как нагуглить)
-
-        // TODO сохраняйте в вектор (std::vector<int>) координаты всех кликов мышки
-        // TODO и перед отрисовкой очередного кадра - заполняйте все уже прокликанные пиксели красным цветом
-
-
-        // TODO сделайте по правому клику мышки переключение в режим "цвета каждого кадра инвертированы" (можете просто воспользоваться функцией invertImageColors)
     }
 }
 
@@ -191,22 +180,54 @@ void task4() {
     }
 
     //imshow("lesson03_window", castleUpscale);
-
+    bool isFirst = 1;
+    Mat firstImage;
 
     while (video.isOpened()) { // пока видео не закрылось - бежим по нему
         bool isSuccess = video.read(content.frame); // считываем из видео очередной кадр
         rassert(isSuccess, 348792347819); // проверяем что считывание прошло успешно
         rassert(!content.frame.empty(), 3452314124643); // проверяем что кадр не пустой
-        for(int i = 0;i<content.pixels.size();++i){
-            content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first) = castleUpscale.at<Vec3b> (content.pixels[i].second, content.pixels[i].first);
-        }
-        for(int y = 0;y<content.frame.rows; ++y){
-            for(int x = 0;x<content.frame.cols;++x){
-                for(int i = 0;i<content.pixels.size();++i){
-                    Vec3b color1 = content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first);
-                    Vec3b color2 = content.frame.at<Vec3b>(y,x);
-                    if(abs(color1[0] - color2[0]) < 10 && abs(color1[1] - color2[1]) < 10 && abs(color1[2] - color2[2]) < 10){
-                        content.frame.at<Vec3b>(y,x) = castleUpscale.at<Vec3b>(y,x);
+//        for(int i = 0;i<content.pixels.size();++i){
+//            content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first) = castleUpscale.at<Vec3b> (content.pixels[i].second, content.pixels[i].first);
+//        }
+//        for(int y = 0;y<content.frame.rows; ++y){
+//            for(int x = 0;x<content.frame.cols;++x){
+//                for(int i = 0;i<content.pixels.size();++i){
+//                    Vec3b color1 = content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first);
+//                    Vec3b color2 = content.frame.at<Vec3b>(y,x);
+//                    if(abs(color1[0] - color2[0]) < 25 && abs(color1[1] - color2[1]) < 25 && abs(color1[2] - color2[2]) < 25){
+//                        content.frame.at<Vec3b>(y,x) = castleUpscale.at<Vec3b>(y,x);
+//                    }
+//                }
+//            }
+//        }
+
+        //if(!isFirst) cv::imshow("fiimg", firstImage);
+
+        if(isFirst){
+            firstImage = content.frame.clone();
+            isFirst = 0;
+            cout<<1;
+        }else{
+
+            Mat img = content.frame;
+            //cv::imshow("img", img);
+
+            vector<vector<int>> mask(img.rows, vector<int>(img.cols));
+            for(int y = 0;y<img.rows;++y){
+                for(int x = 0;x<img.cols;++x){
+                    if(equeal(img.at<Vec3b>(y,x), firstImage.at<Vec3b>(y,x))){
+                        //img.at<Vec3b>(y,x) = castleUpscale.at<Vec3b>(y,x);
+                        mask[y][x] = 1;
+                    }
+                }
+            }
+            dilate(mask,1);
+            erode(mask,1);
+            for(int i=0;i<img.rows;++i){
+                for(int j=0;j<img.cols;++j){
+                    if(mask[i][j] == 1){
+                        img.at<Vec3b>(i,j) = castleUpscale.at<Vec3b>(i,j);
                     }
                 }
             }

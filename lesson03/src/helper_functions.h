@@ -20,3 +20,8 @@ cv::Mat makeBlackPixelsRand(cv::Mat img);
 
 
 vector<vector<int>> dilate(vector<vector<int>> mask, int r);
+
+
+vector<vector<int>> erode(vector<vector<int>> mask, int r);
+
+bool equeal(cv::Vec3b c1, cv::Vec3b c2);

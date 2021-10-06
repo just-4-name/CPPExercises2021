@@ -156,9 +156,40 @@ vector<vector<int>> dilate(vector<vector<int>> mask, int r){ //0 - обьект
                 for(int dx = -r;dx<=r;++dx){
                     int y = i + dy;
                     int x = j + dx;
-                    if(i<0 || i>=mask.size()) continue;
+                    if(y<0 || y>=mask.size()) continue;
+                    if(x<0 || x>=mask[i].size()) continue;
+                    if(mask[y][x] == 0){
+                        mask[i][j] = 0;
+                    }
                 }
             }
         }
     }return mask;
+}
+
+
+vector<vector<int>> erode(vector<vector<int>> mask, int r){ //0 - обьект
+    for(int i=0;i<mask.size();++i){
+        for(int j = 0;j<mask[i].size();++j){
+            for(int dy = -r;dy<=r;++dy){
+                for(int dx = -r;dx<=r;++dx){
+                    int y = i + dy;
+                    int x = j + dx;
+                    if(y<0 || y>=mask.size()) continue;
+                    if(x<0 || x>=mask[i].size()) continue;
+                    if(mask[y][x] == 1){
+                        mask[i][j] = 1;
+                    }
+                }
+            }
+        }
+    }return mask;
+}
+
+
+
+bool equeal(Vec3b c1, Vec3b c2){
+    if(abs(c1[0] - c2[0])<30 && abs(c1[1] - c2[1])<30 && abs(c1[2] - c2[2])<30){
+        return 1;
+    }else return 0;
 }
