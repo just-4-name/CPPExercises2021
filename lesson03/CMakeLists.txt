@@ -11,7 +11,7 @@ find_package(OpenCV 4.5.1 REQUIRED)
 
 set(SOURCES
         src/helper_functions.cpp
-        src/helper_functions.h)
+        src/helper_functions.h src/disjoint.cpp src/disjoint.h)
 
 set(LIBRARIES
         libutils

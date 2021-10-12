@@ -189,20 +189,7 @@ vector<vector<int>> erode(vector<vector<int>> mask, int r){ //0 - обьект
 
 
 bool equeal(Vec3b c1, Vec3b c2){
-    if(abs(c1[0] - c2[0])<30 && abs(c1[1] - c2[1])<30 && abs(c1[2] - c2[2])<30){
+    if(abs(c1[0] - c2[0])<20 && abs(c1[1] - c2[1])<20 && abs(c1[2] - c2[2])<20){
         return 1;
     }else return 0;
-}
-
-Mat maskToPicture(vector<vector<int>> mask){
-    Scalar color(0, 0, 0);
-    if(mask.size() == 0) return Mat(0,0, CV_8UC3, color);
-    Mat res(mask.size(), mask[0].size(), CV_8UC3, color);
-    for(int i=0;i<mask.size();++i){
-        for(int j = 0;j<mask[0].size();++j){
-            if(mask[i][j] == 0) {
-                res.at<Vec3b> (i,j) = Vec3b(0,0,0);
-            }else res.at<Vec3b> (i,j) = Vec3b(255, 255, 255);
-        }
-    }return res;
 }

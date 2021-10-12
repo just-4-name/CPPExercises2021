@@ -6,6 +6,7 @@
 #include<algorithm>
 
 #include "helper_functions.h"
+#include "disjoint.h"
 
 #include <opencv2/highgui.hpp> // подключили часть библиотеки OpenCV, теперь мы можем читать и сохранять картинки
 
@@ -94,6 +95,7 @@ struct MyVideoContent {
     int lastClickY;
     int inv = 0;
     vector<pair<int,int>> pixels;
+    vector<vector<int>> mask, maskAfterErode, maskAfterDilate;
 };
 
 void onMouseClick(int event, int x, int y, int flags, void *pointerToMyVideoContent) {
@@ -153,15 +155,6 @@ void task3() {
 }
 
 void task4() {
-    // TODO на базе кода из task3 (скопируйте просто его сюда) сделайте следующее:
-    // при клике мышки - определяется цвет пикселя в который пользователь кликнул, теперь этот цвет считается прозрачным (как было с черным цветом у единорога)
-    // и теперь перед отрисовкой очередного кадра надо подложить вместо прозрачных пикселей - пиксель из отмасштабированной картинки замка (castle_large.jpg)
-
-    // TODO попробуйте сделать так чтобы цвет не обязательно совпадал абсолютно для прозрачности (чтобы все пиксели похожие на тот что был кликнут - стали прозрачными, а не только идеально совпадающие)
-
-    // TODO подумайте, а как бы отмаскировать фон целиком несмотря на то что он разноцветный?
-    // а как бы вы справились с тем чтобы из фотографии с единорогом и фоном удалить фон зная как выглядит фон?
-    // а может сделать тот же трюк с вебкой - выйти из вебки в момент запуска программы, и первый кадр использовать как кадр-эталон с фоном который надо удалять (делать прозрачным)
     cv::VideoCapture video(0);
 
     rassert(video.isOpened(), 3423948392481); // проверяем что видео получилось открыть
@@ -187,43 +180,56 @@ void task4() {
         bool isSuccess = video.read(content.frame); // считываем из видео очередной кадр
         rassert(isSuccess, 348792347819); // проверяем что считывание прошло успешно
         rassert(!content.frame.empty(), 3452314124643); // проверяем что кадр не пустой
-//        for(int i = 0;i<content.pixels.size();++i){
-//            content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first) = castleUpscale.at<Vec3b> (content.pixels[i].second, content.pixels[i].first);
-//        }
-//        for(int y = 0;y<content.frame.rows; ++y){
-//            for(int x = 0;x<content.frame.cols;++x){
-//                for(int i = 0;i<content.pixels.size();++i){
-//                    Vec3b color1 = content.frame.at<Vec3b>(content.pixels[i].second, content.pixels[i].first);
-//                    Vec3b color2 = content.frame.at<Vec3b>(y,x);
-//                    if(abs(color1[0] - color2[0]) < 25 && abs(color1[1] - color2[1]) < 25 && abs(color1[2] - color2[2]) < 25){
-//                        content.frame.at<Vec3b>(y,x) = castleUpscale.at<Vec3b>(y,x);
-//                    }
-//                }
-//            }
-//        }
-
-        //if(!isFirst) cv::imshow("fiimg", firstImage);
-
+        std::string resultsDir = "lesson03/test1/";
+        if (!std::filesystem::exists(resultsDir)) { // если папка еще не создана
+            std::filesystem::create_directory(resultsDir); // то создаем ее
+        }
         if(isFirst){
             firstImage = content.frame.clone();
             isFirst = 0;
-            cout<<1;
+            cout<<"takeFirstImage\n";
+            imwrite(resultsDir+"firstImage.jpg", firstImage);
         }else{
-
             Mat img = content.frame;
-            //cv::imshow("img", img);
+            int key = cv::waitKey(1);
 
             vector<vector<int>> mask(img.rows, vector<int>(img.cols));
             for(int y = 0;y<img.rows;++y){
                 for(int x = 0;x<img.cols;++x){
                     if(equeal(img.at<Vec3b>(y,x), firstImage.at<Vec3b>(y,x))){
-                        //img.at<Vec3b>(y,x) = castleUpscale.at<Vec3b>(y,x);
                         mask[y][x] = 1;
                     }
                 }
+            }if(key == 32) {
+                imwrite(resultsDir+"maskVanilla.jpg", maskToPicture(mask));
+                cout<<"isodnfjs";
             }
-            dilate(mask,1);
             erode(mask,1);
+            if(key == 32) imwrite(resultsDir + "maskAfterErode.jpg", maskToPicture(mask));
+            dilate(mask,1);
+            if(key == 32) imwrite(resultsDir + "maskAfterDilate.jpg", maskToPicture(mask));
+            height = img.rows;
+            width = img.cols;
+            DisjointSet set(height*width);
+            for(int i = 0; i<height; ++i){
+                for(int j = 0;j < width;++j){
+                    if(mask[i][j] == 0){
+                        if(i>0 && j>0 && mask[i-1][j-1] == 0) set.union_sets(i*width + j, (i-1)*width+j-1);
+                        if(i>0 && j<width-1 && mask[i-1][j+1] == 0) set.union_sets(i*width + j, (i-1)*width+j+1);
+                        if(i<height-1 && j>0 && mask[i+1][j-1] == 0) set.union_sets(i*width + j, (i+1)*width+j-1);
+                        if(i<height-1 && j<width-1 && mask[i+1][j+1] == 0) set.union_sets(i*width + j, (i+1)*width+j+1);
+                    }
+                }
+            }
+            for(int i = 0;i<height;++i){
+                for(int j = 0;j<width;++j){
+                    if(set.get_set_size(width*i+j)<200){
+                        mask[i][j] = 1;
+                    }
+                }
+            }
+            if(key == 32) imwrite(resultsDir + "maskAfterDisjoint.jpg", maskToPicture(mask));
+
             for(int i=0;i<img.rows;++i){
                 for(int j=0;j<img.cols;++j){
                     if(mask[i][j] == 1){
@@ -241,7 +247,7 @@ void task4() {
         cv::setMouseCallback("video", onMouseClick, &content); // делаем так чтобы функция выше (onMouseClick) получала оповещение при каждом клике мышкой
 
         int key = cv::waitKey(10);
-        if(key == 32 || key == 27){
+        if(key == 27){
             return;
         }
     }

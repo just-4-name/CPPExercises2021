@@ -7,21 +7,29 @@
 
 #include <opencv2/highgui.hpp>
 
+using namespace std;
+using namespace cv;
 // TODO 100 реализуйте систему непересекающихся множеств - см. файлы disjoint_set.h и disjoint_set.cpp
 // чтобы их потестировать - постарайтесь дописать сюда много разных интересных случаев:
 void testingMyDisjointSets() {
+    int M = 0;
+    srand((unsigned)time(0));
     DisjointSet set(5);
     rassert(set.count_differents() == 5, 2378923791);
     for (int element = 0; element < 5; ++element) {
         rassert(set.get_set(element) == element, 23892803643);
         rassert(set.get_set_size(element) == 1, 238928031);
     }
-
-    // TODO 100 по мере реализации DisjointSet - добавьте здесь каких-то вызовов операции "объединение двух множеств", сразу после этого проверяя через rassert что после этого результат такой как вы ожидаете
-    // TODO 100 затем попробуйте создать СНМ размера 10.000.000 - и пообъединяйте какие-нибудь элементы (в цикле), быстро ли работает? а если при подвешивании одного корня множества к другому мы не будем учитывать ранк (высоту дерева) - как быстро будет работать?
-    // TODO 100 попробуйте скомпилировать программу с оптимизациями и посмотреть ускорится ли программа - File->Settings->CMake->Плюсик над Debug->и переключите его в RelWithDebInfo (чтобы были хоть какие-то отладочные символы)
+    int x = set.union_sets(2,4);
+    rassert(set.get_set(2) == set.get_set(4),11233124)
+    rassert(set.get_set_size(2) == 2,1231313)
+    DisjointSet set1(M);
+    cout<<"kdsm";
+    for(int i = 0;i<M;++i){
+        int el1 = rand()%M, el2 = rand()%M;
+        set1.union_sets(el1,el2);
+    }
 }
-
 // TODO 200 перенесите сюда основную часть кода из прошлого задания про вычитание фона по первому кадру, но:
 // 1) добавьте сохранение на диск визуализации картинок:
 // 1.1) картинка эталонного фона
@@ -33,6 +41,11 @@ void testingMyDisjointSets() {
 // 3) попробуйте добавить с помощью нажатия каких то двух кнопок "усиление/ослабление подавления фона"
 // 4) попробуйте поменять местами морфологию и СНМ
 // 5) попробуйте добавить настройку параметров морфологии и СНМ по нажатию кнопок (и выводите их значения в консоль)
+
+
+
+
+
 void backgroundMagickStreaming() {
 
 }
@@ -40,7 +53,7 @@ void backgroundMagickStreaming() {
 int main() {
     try {
         testingMyDisjointSets();
-//        backgroundMagickStreaming();
+        //backgroundMagickStreaming();
         return 0;
     } catch (const std::exception &e) {
         std::cout << "Exception! " << e.what() << std::endl;
