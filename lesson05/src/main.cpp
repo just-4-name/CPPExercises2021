@@ -5,12 +5,13 @@
 #include "sobel.h"
 
 #include <opencv2/highgui.hpp>
+using namespace std;
+using namespace cv;
 
 void testBGRToGray() {
     std::string name = "valve";
     cv::Mat img = cv::imread("lesson05/data/" + name + ".jpg");
     rassert(!img.empty(), 23981920813);
-
     // TODO реализуйте эту функцию, преобразующую картинку в черно-белую
     cv::Mat gray = convertBGRToGray(img);
 
@@ -24,7 +25,7 @@ void testSobel(const std::string &name) {
 
     // TODO реализуйте функцию считающую применение оператора Собеля к картинке
     // т.е. посчитайте производную по x и по y (в каждом пикселе хранятся две эти производные)
-    cv::Mat dxy = sobelDXY(img); // обратите внимание что внутри ждут черно-белую картинку, значит нашу картинку надо перед Собелем преобразовать
+    cv::Mat dxy = sobelDXY(convertBGRToGray(img)); // обратите внимание что внутри ждут черно-белую картинку, значит нашу картинку надо перед Собелем преобразовать
 
     cv::Mat dx = convertDXYToDX(dxy); // TODO реализуйте функцию которая вытаскивает силу производной по x (ее абсолютное значение)
     // TODO и удостоверьтесь что результат выглядит так как вы ожидаете, если нет - спросите меня
@@ -51,6 +52,8 @@ int main() {
 
         for (int i = 1; i <= 4; ++i) {
             // TODO сделайте вызов тестирования картинок line11.jpg - line14.jpg
+            string name = "line1" + to_string(i);
+            testSobel(name);
         }
 
         testSobel("line21_water_horizont");
