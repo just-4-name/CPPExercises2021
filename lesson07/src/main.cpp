@@ -6,12 +6,16 @@
 
 #include <opencv2/imgproc.hpp>
 
+using namespace std;
+using namespace cv;
+
 
 void test(std::string name) {
     std::string full_path = "lesson05/data/" + name + ".jpg";
     cv::Mat img = cv::imread(full_path);
     rassert(!img.empty(), 238982391080010);
     cv::cvtColor(img, img, cv::COLOR_BGR2GRAY); // преобразуем в оттенки серого
+    cv::imwrite("lesson07/resultsData/" + name + ".jpg", img);
 
     cv::Mat grad_x, grad_y; // в этих двух картинках мы получим производную (градиент=gradient) по оси x и y
     // для этого достаточно дважды применить оператор Собеля (реализованный в OpenCV)
@@ -27,44 +31,44 @@ void test(std::string name) {
     // замечаем что мы ведь забыли взять абсолютное значение градиента!
     // TODO посмотрите на картинки на диске, какая из картинок это явно показывает?
     // давайте это исправим:
-//    grad_x = cv::abs(grad_x);
-//    grad_y = cv::abs(grad_y);
-//    cv::imwrite("lesson07/resultsData/" + name + "_3_sobel_x.png", grad_x);
-//    cv::imwrite("lesson07/resultsData/" + name + "_4_sobel_y.png", grad_y);
+    grad_x = cv::abs(grad_x);
+    grad_y = cv::abs(grad_y);
+    cv::imwrite("lesson07/resultsData/" + name + "_3_sobel_x.png", grad_x);
+    cv::imwrite("lesson07/resultsData/" + name + "_4_sobel_y.png", grad_y);
     // TODO посмотрите на картинки и проверьте поправилось ли?
 
-//    cv::Mat sobel_strength(img.rows, img.cols, CV_32FC1, 0.0f);
+    cv::Mat sobel_strength(img.rows, img.cols, CV_32FC1, 0.0f);
 //    // теперь хочется заполнить sobel_strength силой градиента с учетом обеих осей, т.е. что-то вроде sobel_strength=sqrt(grad_x^2+grad_x^2):
-//    for (int j = 0; j < sobel_strength.rows; ++j) {
-//        for (int i = 0; i < sobel_strength.cols; ++i) {
-//            // TODO реализуйте здесь заполнение sobel_strength с учетом grad_x, grad_y:
-//            float dx = grad_x.at<float>(j, i);
-//            // ...
-//            float gradient_strength = 0.0; // TODO
-//            sobel_strength.at<float>(j, i) = gradient_strength;
+    for (int j = 0; j < sobel_strength.rows; ++j) {
+        for (int i = 0; i < sobel_strength.cols; ++i) {
+            // TODO реализуйте здесь заполнение sobel_strength с учетом grad_x, grad_y:
+            float dx = grad_x.at<float>(j, i);
+            float dy = grad_y.at<float>(j,i);
+            float gradient_strength = hypot(dx,dy); // TODO
+            sobel_strength.at<float>(j, i) = gradient_strength;
+        }
+    }
+    cv::imwrite("lesson07/resultsData/" + name + "_5_sobel_strength.png", sobel_strength);
+
+    cv::Mat hough = buildHough(sobel_strength); // TODO теперь зайдите внутрь этой функции и реализуйте построение пространства Хафа
+    cv::imwrite("lesson07/resultsData/" + name + "_6_hough.png", hough);
+    // обратите внимание что почти все пространство - яркое белое или черное, это происходит потому что яркость сильно больше чем 255
+
+    // TODO поправьте это - найдите максимальную яркость (max_accumulated) среди всей матрицы hough и после этого отнормируйте всю картинку:
+    float max_accumulated = 0.0f;
+    for (int i = 0;i<hough.rows;++i){
+        for(int j=0;j<hough.cols;++j){
+            max_accumulated = max(max_accumulated, hough.at<float>(i,j));
+        }
+    }
+
+    // TODO замените каждый пиксель с яркости X на яркость X*255/max_accumulated (т.е. уменьшите диапазон значений):
+//    for (int i = 0;i<hough.rows;++i){
+//        for(int j=0;j<hough.cols;++j){
+//            hough.at<float>(i,j) = hough.at<float>(i,j) * 255 / max_accumulated;
 //        }
 //    }
-//    cv::imwrite("lesson07/resultsData/" + name + "_5_sobel_strength.png", sobel_strength);
-//
-//    cv::Mat hough = buildHough(sobel_strength); // TODO теперь зайдите внутрь этой функции и реализуйте построение пространства Хафа
-//
-//    cv::imwrite("lesson07/resultsData/" + name + "_6_hough.png", hough);
-//    // обратите внимание что почти все пространство - яркое белое или черное, это происходит потому что яркость сильно больше чем 255
-//
-//    // TODO поправьте это - найдите максимальную яркость (max_accumulated) среди всей матрицы hough и после этого отнормируйте всю картинку:
-//    // float max_accumulated = 0.0f;
-//    // for () {
-//    //     for () {
-//    //         ...
-//    //     }
-//    // }
-//    // TODO замените каждый пиксель с яркости X на яркость X*255/max_accumulated (т.е. уменьшите диапазон значений):
-//    // for () {
-//    //     for () {
-//    //         ...
-//    //     }
-//    // }
-//    // cv::imwrite("lesson07/resultsData/" + name + "_7_hough_normalized.png", hough*255.0f/max_accumulated);
+    cv::imwrite("lesson07/resultsData/" + name + "_7_hough_normalized.png", hough*255.0f/max_accumulated);
 }
 
 
@@ -72,11 +76,11 @@ int main() {
     try {
         // TODO посмотрите на результат (аккумулятор-пространство Хафа) на всех этих картинках (раскомментируя их одну за другой)
         // TODO подумайте и напишите здесь оветы на вопросы:
-        test("line01");
+      //  test("line01");
         // 1) Какие координаты примерно должны бы быть у самой яркой точки в картинке line01_7_hough_normalized.png?
         // ответ:
 
-//        test("line02");
+        //test("line02");
 //        // 2) Какие координаты примерно должны бы быть у самой яркой точки в картинке line02_7_hough_normalized.png?
 //        // ответ:
 //
@@ -100,7 +104,7 @@ int main() {
 //        // 7) Сколько должно бы быть ярких точек? Сколько вы насчитали в пространстве Хафа? Есть ли интересные наблюдения относительно предыдущего случая?
 //        // ответ:
 //
-//        test("valve");
+        test("valve");
 //        // 8) Какие-нибудь мысли?
 
         return 0;

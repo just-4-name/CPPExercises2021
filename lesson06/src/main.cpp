@@ -4,8 +4,16 @@
 
 #include "blur.h" // TODO реализуйте функцию блюра с произвольной силой размытия в файле blur.cpp
 
+using namespace std;
+using namespace cv;
+
 void testSomeBlur() {
     // TODO выберите любую картинку и любую силу сглаживания - проверьте что результат - чуть размытая картинка
+    Mat img = imread("lesson05/data/line21_water_horizont.jpg");
+    //imwrite("lesson06/resultsData/water.jpg", img);
+    Mat blurImg = blur(img.clone(), 5);
+    imwrite("lesson06/resultsData/water_blur.jpg", blurImg);
+
     // Входные картинки для тестирования возьмите из предыдущего урока (т.е. по пути lesson05/data/*).
     // Результирующие картинки сохарняйте в эту папку (т.е. по пути lesson06/resultsData/*).
 }
