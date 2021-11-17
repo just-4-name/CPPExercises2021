@@ -2,6 +2,9 @@
 
 #include <libutils/rasserts.h>
 
+using namespace std;
+using namespace cv;
+
 double toRadians(double degrees)
 {
     const double PI = 3.14159265358979323846264338327950288;
@@ -29,7 +32,7 @@ cv::Mat buildHough(cv::Mat sobel) {// единственный аргумент 
     int max_theta = 360;
 
     // решаем какое максимальное значение у параметра r в нашем пространстве прямых:
-    int max_r = width + height;
+    int max_r = hypot(width, height);
 
     // создаем картинку-аккумулятор, в которой мы будем накапливать суммарные голоса за прямые
     // так же известна как пространство Хафа
@@ -52,19 +55,16 @@ cv::Mat buildHough(cv::Mat sobel) {// единственный аргумент 
 
                 // TODO надо определить в какие пиксели i,j надо внести наш голос с учетом проблемы "Почему два экстремума?" обозначенной на странице:
                 // https://www.polarnick.com/blogs/239/2021/school239_11_2021_2022/2021/11/09/lesson9-hough2-interpolation-extremum-detection.html
-
-//                        // чтобы проверить не вышли ли мы за пределы картинки-аккумулятора - давайте явно это проверим
-//                        rassert(i >= 0, 237891731289044);
-//                        rassert(i < accumulator.cols, 237891731289045);
-//                        rassert(j >= 0, 237891731289046);
-//                        rassert(j < accumulator.rows, 237891731289047);
-//                        // теперь легко отладить случай выхода за пределы картинки
-//                        // просто поставьте точку остановки внутри rassert:
-//                        // нажмите Ctrl+Shift+N -> rasserts.cpp
-//                        // и поставьте точку остановки на 8 строке: "return line;"
-//
-//                        // и добоавляем в картинку-аккумулятор наш голос с весом strength (взятый из картинки свернутой Собелем)
-//                        accumulator.at<float>(j, i) += strength;
+                int r1 = (int) round(estimateR(x0,y0, toRadians(theta0 + 1)));
+                if(r1 < 0 || r1 >= max_r) continue;
+                if(r0>r1) swap(r1,r0);
+                for(int i = r1;i>r0;--i){
+                    float l = (i-r0)/(r1-r0);
+                    rassert(l<=1,123)
+                    float r = 1-l;
+                    accumulator.at<float> (i,theta0) += l*strength;
+                    accumulator.at<float> (i,theta0 + 1) += r*strength;
+                }
             }
         }
     }
@@ -86,10 +86,22 @@ std::vector<PolarLineExtremum> findLocalExtremums(cv::Mat houghSpace)
         for (int r = 0; r < max_r; ++r) {
             // TODO
             // ...
-            // if (ok) {
-            //     PolarLineExtremum line(theta, r, votes);
-            //     winners.push_back(line);
-            // }
+            bool ok = 1;
+            for(int dtheta = -1; dtheta<=1; dtheta++){
+                for(int dr = -1; dr<=1; ++dr){
+                    if(dr == 0 && dtheta == 0) continue;
+                    if(theta + dtheta>=max_theta || theta + dtheta<0) continue;
+                    if(r+dr>=max_r || r+dr<0) continue;
+                    if(houghSpace.at<float>(r+dr, theta+dtheta)>=houghSpace.at<float>(r,theta)) {
+                        ok = 0;
+                        break;
+                    }
+                }
+            }
+             if (ok) {
+                 PolarLineExtremum line(theta, r, houghSpace.at<float>(r,theta));
+                 winners.push_back(line);
+             }
         }
     }
 
@@ -103,7 +115,15 @@ std::vector<PolarLineExtremum> filterStrongLines(std::vector<PolarLineExtremum> 
     // Эта функция по множеству всех найденных локальных экстремумов (прямых) находит самую популярную прямую
     // и возвращает только вектор из тех прямых, что не сильно ее хуже (набрали хотя бы thresholdFromWinner голосов от победителя, т.е. например половину)
 
-    // TODO
+    int m = 0;
+    for(int i = 0;i<allLines.size();++i){
+        m = max(m, (int)(round(allLines[i].votes)));
+    }
+    for(int i=0;i<allLines.size();++i){
+        if(allLines[i].votes>=thresholdFromWinner*m){
+            strongLines.push_back(allLines[i]);
+        }
+    }
 
     return strongLines;
 }
