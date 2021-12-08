@@ -10,6 +10,8 @@
 #define NSAMPLES_PER_LETTER 5
 #define LETTER_DIR_PATH std::string("lesson10/generatedData/letters")
 
+using namespace std;
+
 
 int randFont() {
     int fonts[] = {
@@ -27,10 +29,10 @@ int randFont() {
     int font = rand() % nfonts;
 
     // С вероятностью 20% делаем шрифт наклонным (italic)
-//    bool is_italic = ((rand() % 5) == 0);
-//    if  (is_italic) {
-//        font = font | cv::FONT_ITALIC;
-//    }
+    bool is_italic = ((rand() % 5) == 0);
+    if  (is_italic) {
+        font = font | cv::FONT_ITALIC;
+    }
 
     return font;
 }
@@ -110,6 +112,7 @@ void experiment1() {
     // 2) Максимальное попарное расстояние между примерами этой буквы
     //
     // А так же среди всех максимальных расстояний найдите максимальное и выведите его в конце
+     double m = 0, avg = 0;
 
     std::cout << "________Experiment 1________" << std::endl;
     for (char letter = 'a'; letter <= 'z'; ++letter) {
@@ -120,10 +123,13 @@ void experiment1() {
                 cv::Mat a = cv::imread(letterDir + "/" + std::to_string(sampleA) + ".png");
                 cv::Mat b = cv::imread(letterDir + "/" + std::to_string(sampleB) + ".png");
                 HoG hogA = buildHoG(a);
-                // TODO
+                HoG hogB = buildHoG(b);
+                avg+= distance(hogA, hogB);
+                m = max(m, distance(hogA,hogB));
+
             }
         }
-//        std::cout << "Letter " << letter << ": max=" << distMax << ", avg=" << (distSum / distN) << std::endl;
+        std::cout << "Letter " << letter << ": max=" << m << ", avg=" << (avg / (NSAMPLES_PER_LETTER*(NSAMPLES_PER_LETTER-1)/2)) << std::endl;
     }
 }
 
@@ -138,15 +144,28 @@ void experiment2() {
 
     std::cout << "________Experiment 2________" << std::endl;
     for (char letterA = 'a'; letterA <= 'z'; ++letterA) {
-        std::string letterDirA = LETTER_DIR_PATH + "/" + letterA;
-
+        std::string letterDirA = LETTER_DIR_PATH + "/" + letterA + "/" + std::to_string(1) + ".png";
+        cv::Mat imgA = cv::imread(letterDirA);
+        //cv::imshow("window", imgA);
+        char letterMax = 'a', letterMin = 'a';
+        double distMax = 0, distMin = 1e9;
         for (char letterB = 'a'; letterB <= 'z'; ++letterB) {
             if (letterA == letterB) continue;
-
-            // TODO
+            std::string letterDirB = LETTER_DIR_PATH + "/" + letterB+ "/" + std::to_string(1) + ".png";
+            cv::Mat imgB = cv::imread(letterDirB);
+            HoG hogA = buildHoG(imgA);
+            HoG hogB = buildHoG(imgB);
+            double d = distance(hogA, hogB);
+            if(d>distMax){
+                distMax = d;
+                letterMax = letterB;
+            }if(d<distMin){
+                distMin = d;
+                letterMin = letterB;
+            }
         }
 
-//        std::cout << "Letter " << letterA << ": max=" << letterMax << "/" << distMax << ", min=" << letterMin << "/" << distMin << std::endl;
+        std::cout << "Letter " << letterA << ": max=" << letterMax << "/" << distMax << ", min=" << letterMin << "/" << distMin << std::endl;
     }
 }
 
@@ -160,7 +179,7 @@ int main() {
         std::cout << "Images with letters were generated!" << std::endl;
 
         // TODO:
-        experiment1();
+        //experiment1();
 
         // TODO:
         experiment2();
