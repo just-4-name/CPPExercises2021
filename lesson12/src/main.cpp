@@ -75,10 +75,10 @@ void test1() {
     allPoints.insert(allPoints.end(), randomPoints.begin(), randomPoints.end());
     allPoints.insert(allPoints.end(), pointsNearLine.begin(), pointsNearLine.end());
 
-    Line oneLineToRuleThemAll2 = fitLineFromNNoisyPoints(allPoints); // TODO 06 БОНУС - реализуйте построение прямой по многим точкам включающим нерелевантные (такое чтобы прямая как можно лучше учитывала НАИБОЛЬШЕЕ число точек)
-    std::cout << "One line to rule them all (from noisy points): " << oneLineToRuleThemAll2 << std::endl;
-    oneLineToRuleThemAll2.plot(plot, plotScale, blueRed);
-    cv::imwrite(results + "test1_5final_line_after_noise.png", plot);
+    //Line oneLineToRuleThemAll2 = fitLineFromNNoisyPoints(allPoints); // TODO 06 БОНУС - реализуйте построение прямой по многим точкам включающим нерелевантные (такое чтобы прямая как можно лучше учитывала НАИБОЛЬШЕЕ число точек)
+    //std::cout << "One line to rule them all (from noisy points): " << oneLineToRuleThemAll2 << std::endl;
+    //oneLineToRuleThemAll2.plot(plot, plotScale, blueRed);
+    //cv::imwrite(results + "test1_5final_line_after_noise.png", plot);
 }
 
 
