@@ -22,7 +22,7 @@ void drawText(cv::Mat img, std::string text, double fontScale, int &yOffset) {
 
 
 void run() {
-    const bool useWebcam = true; // TODO попробуйте выставить в true, если у вас работает вебкамера - то и здорово! иначе - работайте хотя бы со статичными картинками
+    const bool useWebcam = 0; // TODO попробуйте выставить в true, если у вас работает вебкамера - то и здорово! иначе - работайте хотя бы со статичными картинками
 
     bool drawOver = true; // рисовать ли поверх наложенную картинку (можно включить-включить чтобы мигнуть картинкой и проверить качество выравнивания)
     bool drawDebug = true; // рисовать ли поверх отладочную информацию (например красный кант вокруг нарисованной поверх картинки)
@@ -56,7 +56,8 @@ void run() {
         }
 
         auto frameProcessingStartTime = std::chrono::steady_clock::now(); // замеряем сколько сейчас времени чтобы оценить FPS
-
+        auto frameFilteringStartTime = std::chrono::steady_clock::now();
+        auto frameMatchingStartTime = std::chrono::steady_clock::now();
         cv::Mat mainWindowImage = currentFrame.clone(); // делаем копию чтобы на ней рисовать любую отладочную информацию не портя оригинальную картинку
 
         {
@@ -72,6 +73,68 @@ void run() {
                 // TODO кроме того будет быстрее работать если вы будете использовать релизную сборку вместо Debug:
                 // см. "Как ускорить программу" - https://www.polarnick.com/blogs/239/2021/school239_11_2021_2022/2021/10/05/lesson5-disjoint-set.html
             }
+            std::vector<cv::KeyPoint> keypoints0, keypoints1; // здесь будет храниться список ключевых точек
+            cv::Mat descriptors0, descriptors1; // здесь будут зраниться дескрипторы этих ключевых точек
+            std::cout << "Detecting SIFT keypoints and describing them (computing their descriptors)..." << std::endl;
+            detector->detectAndCompute(currentFrame, cv::noArray(), keypoints0, descriptors0);
+            detector->detectAndCompute(imgForDetection, cv::noArray(), keypoints1, descriptors1);
+            std::cout << "SIFT keypoints detected and described: " << keypoints0.size() << " and " << keypoints1.size() << std::endl; // TODO
+
+
+            // Теперь давайте сопоставим ключевые точки между картинкой 0 и картинкой 1:
+            // найдя для каждой точки из первой картинки - ДВЕ самые похожие точки из второй картинки
+            frameMatchingStartTime = std::chrono::steady_clock::now();
+            std::vector<std::vector<cv::DMatch>> matches01;
+            matcher->knnMatch(descriptors0, descriptors1, matches01, 2); // k: 2 - указывает что мы ищем ДВЕ ближайшие точки, а не ОДНУ САМУЮ БЛИЖАЙШУЮ
+            // т.к. мы для каждой точки keypoints0 ищем ближайшую из keypoints1, то сопоставлений найдено столько же сколько точек в keypoints0:
+
+
+            // TODO: исследуйте минимальное/медианное/максимальное расстояние в найденных сопоставлениях
+            std::vector<double> distances;
+            for (int i = 0; i < matches01.size(); ++i) {
+                distances.push_back( matches01[i][0].distance );
+            }
+            std::sort( distances.begin(), distances.end() ); // GOOGLE: "cpp how to sort vector"
+                        // Теперь давайте сопоставим ключевые точки между картинкой 1 и картинкой 0 (т.е. в обратную сторону):
+
+
+            // Теперь давайте попробуем убрать ошибочные сопоставления
+            std::cout << "Filtering matches..." << std::endl;
+            frameFilteringStartTime = std::chrono::steady_clock::now();
+            std::vector<cv::Point2f> points0, points1; // здесь сохраним координаты ключевых точек для удобства позже
+
+            for (int i = 0; i < keypoints0.size(); ++i) {
+                cv::DMatch match = matches01[i][0];
+                rassert(match.queryIdx == i, 234782749278097); // и вновь - queryIdx это откуда точки (поэтому всегда == i)
+                int j = match.trainIdx; // и trainIdx - это какая точка из второго массива точек оказалась к нам (к queryIdx из первого массива точек) ближайшей
+                rassert(j < keypoints1.size(), 38472957238099); // поэтому явно проверяем что индекс не вышел за пределы второго массива точек
+
+
+                bool isOk = true;
+
+                // TODO реализуйте фильтрацию на базе "достаточно ли похож дескриптор?" - как можно было бы подобрать порог? вспомните про вывод min/median/max раньше
+                if (match.distance > distances[distances.size()/2]) {
+                    isOk = false;
+                }
+
+                // TODO добавьте K-ratio тест (K=0.7), т.е. проверьте правда ли самая похожая точка сильно ближе к нашей точки (всмысле расстояния между дескрипторами) чем вторая по похожести?
+                double k = 0.7;
+
+                cv::DMatch match2 = matches01[i][1];
+                if (match.distance > match2.distance*k) {
+                    isOk = false;
+                }
+
+
+                if (isOk) {
+                    points0.push_back(keypoints0[i].pt);
+                    points1.push_back(keypoints1[j].pt);
+                }
+            }
+            rassert(points0.size() == points1.size(), 3497282579850108);
+            std::cout << points0.size() << "/" << keypoints0.size() << " good matches left" << std::endl;
+
+
 
             // TODO детектируйте и постройте дескрипторы у ключевых точек
             // std::cout << "Keypoints initially: " << keypoints0.size() << ", " << keypoints1.size() << "..." << std::endl;
@@ -102,22 +165,26 @@ void run() {
             // TODO добавьте вывод в лог - сколько ключевых точек было изначально, и сколько осталось сопоставлений после фильтрации
 
             // TODO findHomography(...) + рисование поверх:
-//            cv::Mat H01 = cv::findHomography(TODO);
-//            if (H01.empty()) {
-//                // см. документацию https://docs.opencv.org/4.5.1/d9/d0c/group__calib3d.html#ga4abc2ece9fab9398f2e560d53c8c9780
-//                // "Note that whenever an H matrix cannot be estimated, an empty one will be returned."
-//                std::cout << "FAIL 24123422!" << std::endl;
-//            } else {
-//                cv::Mat overlapImg = imgToDraw.clone();
-//                if (drawDebug) {
-//                    // рисуем красный край у накладываемой картинки
-//                    cv::Scalar red(0, 0, 255);
-//                    cv::rectangle(overlapImg, cv::Point(0, 0), cv::Point(overlapImg.cols-1, overlapImg.rows-1), red, 2);
-//                }
-//                if (drawOver) {
-//                    // cv::warpPerspective(TODO);
-//                }
-//            }
+            const double ransacReprojThreshold = 3.0;
+            std::vector<unsigned char> inliersMask;
+            cv::Mat H01 = cv::findHomography(points0, points1, cv::RANSAC, ransacReprojThreshold, inliersMask);
+            if (H01.empty()) {
+                // см. документацию https://docs.opencv.org/4.5.1/d9/d0c/group__calib3d.html#ga4abc2ece9fab9398f2e560d53c8c9780
+                // "Note that whenever an H matrix cannot be estimated, an empty one will be returned."
+                std::cout << "FAIL 24123422!" << std::endl;
+            } else {
+                cv::Mat overlapImg = imgToDraw.clone();
+                if (drawDebug) {
+                    // рисуем красный край у накладываемой картинки
+                    cv::Scalar red(0, 0, 255);
+                    cv::rectangle(overlapImg, cv::Point(0, 0), cv::Point(overlapImg.cols-1, overlapImg.rows-1), red, 2);
+                }
+                if (drawOver) {
+                    cv::Mat H10 = H01.inv(); // у матрицы есть обратная матрица - находим ее, какое преобразование она делает?
+                    cv::warpPerspective(overlapImg, mainWindowImage, H10, mainWindowImage.size(), cv::INTER_LINEAR,
+                                        cv::BORDER_TRANSPARENT);
+                }
+            }
         }
 
         if (drawDebug) {
@@ -125,6 +192,9 @@ void run() {
 
             auto frameProcessingEndTime = std::chrono::steady_clock::now();
             int timeForFrame = std::chrono::duration_cast<std::chrono::milliseconds>(frameProcessingEndTime - frameProcessingStartTime).count();
+            int timeForFiltering = std::chrono::duration_cast<std::chrono::milliseconds>(frameProcessingEndTime - frameFilteringStartTime).count();
+            int timeForMatching = std::chrono::duration_cast<std::chrono::milliseconds>(frameFilteringStartTime - frameMatchingStartTime).count();
+            int timeForDetecting = std::chrono::duration_cast<std::chrono::milliseconds>(frameMatchingStartTime - frameProcessingStartTime).count();
             int fps;
             if (timeForFrame == 0) {
                 fps = 99999;
@@ -134,12 +204,12 @@ void run() {
             drawText(mainWindowImage, std::to_string(fps) + " FPS", 0.5, textYOffset);
 
             // TODO добавьте короткую справку про кнопки управления
-            drawText(mainWindowImage, "Controls: ", 0.5, textYOffset);
+            drawText(mainWindowImage, "Controls: 1 - change current frame, 2 - use current frame as imgtodraw, 3 - show debug, S - change method, H - DrawOver", 0.5, textYOffset);
 
             // TODO добавьте разбивку сколько времени занимает детектирование, сколько матчинг, сколько фильтрация (по аналогии с тем как выше замерялось время на обработку для рассчета FPS):
-//            drawText(mainWindowImage, "Timings: " + std::to_string(timeForFrame) + " ms = "
-//                    + std::to_string(detect_ms) + " ms detect + " + TODO,
-//                    0.5, textYOffset);
+            drawText(mainWindowImage, "Timings: " + std::to_string(timeForFrame) + " ms = "
+                   + std::to_string(timeForDetecting) + " ms detect + " + std::to_string(timeForMatching)+" ms matching" + std::to_string(timeForFiltering) + " ms filtering",
+                    0.5, textYOffset);
         }
 
         // Рисуем все три окошка:
@@ -153,19 +223,18 @@ void run() {
             // прошло 5 миллисекунд но ничего не было нажато - значит идем обрабатывать следующий кадр с веб. камеры
         } else if (key == 27) { // Esc - выключаем программу
             break;
-//        } else if (useWebcam && key == TODO) {
-//            // TODO если пользователь нажал кнопку 1 (как исследовать какой код у такой кнопки? опытным путем!) - текущий кадр надо использовать как imgForDetection
-//            // ... = currentFrame.clone();
-//        } else if (useWebcam && key == TODO) {
-//            // TODO если пользователь нажал кнопку 2 - текущий кадр надо использовать как imgToDraw
-//        } else if (key == TODO) {
-//            // TODO если пользователь нажал кнопку H (Hide) - выключите/включите рисовать картинку поверх (т.е. drawOver)
-//        } else if (key == TODO) {
-//            // TODO если пользователь нажал кнопку 3 - включить/выключить отрисовку разной отладочной информации (т.е. drawDebug)
-//        } else if (key == TODO) {
-//            // TODO если пользователь нажал кнопку S (SIFT) - включить/выключить использование SIFT/ORB
+        }else if (useWebcam && key == 49) {
+            imgForDetection = currentFrame.clone();
+        } else if (useWebcam && key == 50) {
+            imgToDraw = currentFrame.clone();
+        } else if (key == 104) {
+            drawOver = !drawOver;
+        } else if (key == 51) {
+            drawDebug = !drawDebug;
+        } else if (key == 115) {
+            useSIFTDescriptor = !useSIFTDescriptor;
         } else {
-            std::cerr << "UKNOWN KEY " << key << " WAS PRESSED" << std::endl;
+            std::cerr << "UNKNOWN KEY " << key << " WAS PRESSED" << std::endl;
         }
     }
 }

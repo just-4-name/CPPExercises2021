@@ -1,26 +1,12 @@
 #include <vector>
-#include <sstream>
 #include <iostream>
-#include <stdexcept>
-
-int debugPoint(int line) {
-    if (line < 0)
-        return 0;
-
-    // You can put breakpoint at the following line to catch any rassert failure:
-    return line;
-}
-
-#define rassert(condition, message) if (!(condition)) { std::stringstream ss; (ss << "Assertion \"" << message << "\" failed at line " << debugPoint(__LINE__) << "!"); throw std::runtime_error(ss.str()); }
+#include <set>
 
 
-struct Edge {
-    int u, v; // номера вершин которые это ребро соединяет
-    int w; // длина ребра (т.е. насколько длинный путь предстоит преодолеть переходя по этому ребру между вершинами)
+using namespace std;
 
-    Edge(int u, int v, int w) : u(u), v(v), w(w)
-    {}
-};
+#define int long long
+
 
 void run() {
     // https://codeforces.com/problemset/problem/20/C?locale=ru
@@ -30,58 +16,58 @@ void run() {
     //
     // То все замечательно и вы молодец.
 
-    int nvertices, medges;
-    std::cin >> nvertices;
-    std::cin >> medges;
+    int n,m;
+    std::cin >> n;
+    std::cin >> m;
 
-    std::vector<std::vector<Edge>> edges_by_vertex(nvertices);
-    for (int i = 0; i < medges; ++i) {
+    vector<vector<pair<int,int>>> g(n);
+    set<pair<int, int>> edges;
+    for (int i = 0; i < m; ++i) {
         int ai, bi, w;
         std::cin >> ai >> bi >> w;
-        rassert(ai >= 1 && ai <= nvertices, 23472894792020);
-        rassert(bi >= 1 && bi <= nvertices, 23472894792021);
 
         ai -= 1;
         bi -= 1;
-        rassert(ai >= 0 && ai < nvertices, 3472897424024);
-        rassert(bi >= 0 && bi < nvertices, 3472897424025);
+        g[ai].push_back({bi,w});
+        g[bi].push_back({ai,w});
+    }
+    edges.insert({0,0});
 
-        Edge edgeAB(ai, bi, w);
-        edges_by_vertex[ai].push_back(edgeAB);
-
-        edges_by_vertex[bi].push_back(Edge(bi, ai, w)); // а тут - обратное ребро, можно конструировать объект прямо в той же строчке где он и потребовался
+    const int INF = 1e18;
+    vector<int> d(n,INF);
+    d[0] = 0;
+    vector<int> p(n);
+    while(!edges.empty()){
+        pair<int, int> e = *edges.begin();
+        edges.erase(e);
+        int len = e.first, v = e.second;
+        for(auto to: g[v]){
+            if(to.second + len < d[to.first]){
+                edges.erase({d[to.first], to.first});
+                edges.insert({to.second + len, to.first});
+                d[to.first] = to.second + len;
+                p[to.first] = v;
+            }
+        }
+    }
+    if(d[n-1] == INF) cout<<-1;
+    else{
+        vector<int> ans;
+        ans.reserve(n);
+        ans.push_back(n);
+        int cur = n - 1;
+        while(p[cur] != 0){
+            ans.push_back(p[cur] + 1);
+            cur = p[cur];
+        }ans.push_back(1);
+        for(int i = ans.size()-1;i>=0;--i) cout<<ans[i]<<" ";
     }
 
-    const int start = 0;
-    const int finish = nvertices - 1;
-
-    const int INF = std::numeric_limits<int>::max();
-
-    std::vector<int> distances(nvertices, INF);
-    // TODO ...
-
-//    while (true) {
-//
-//    }
-
-//    if (...) {
-//        ...
-//        for (...) {
-//            std::cout << (path[i] + 1) << " ";
-//        }
-//        std::cout << std::endl;
-//    } else {
-//        std::cout << -1 << std::endl;
-//    }
 }
 
-int main() {
-    try {
-        run();
-
-        return 0;
-    } catch (const std::exception &e) {
-        std::cout << "Exception! " << e.what() << std::endl;
-        return 1;
-    }
+int32_t main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(0);
+    cout.tie(0);
+    run();
 }
