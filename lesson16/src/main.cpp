@@ -11,7 +11,15 @@
 
 #include <libutils/rasserts.h>
 
+using namespace std;
+using namespace cv;
+
 bool isPixelEmpty(cv::Vec3b color) {
+    bool ok = 1;
+    for(auto i : color) {
+        if(i != 0) ok = 0;
+    }
+    return ok;
     // TODO 1 реализуйте isPixelEmpty(color):
     // - верните true если переданный цвет - полностью черный (такие пиксели мы считаем пустыми)
     // - иначе верните false
@@ -138,6 +146,12 @@ void run(std::string caseName) {
     // При этом сделайте так чтобы самый сильно отличающийся пиксель - всегда был идеально белым (255), т.е. выполните нормировку с учетом того какая максимальная разница яркости присутствует
     // Напоминание - вот так можно выставить цвет в пикселе:
     //  panoDiff.at<cv::Vec3b>(j, i) = cv::Vec3b(blueValue, greenValue, redValue);
+    for(int i = 0; i<pano_rows;++i){
+        for(int j = 0; j<pano_cols;++j){
+            Vec3b c1 = pano0.at<Vec3b>(i,j), c2 = pano1.at<Vec3b>(i,j);
+
+        }
+    }
 
     cv::imwrite(resultsDir + "5panoDiff.jpg", panoDiff);
 }
