@@ -2,12 +2,17 @@
 #include <sstream>
 #include <iostream>
 #include <stdexcept>
+#include<set>
 
 #include <libutils/rasserts.h>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/types.hpp>
+
+#define int long long
+using namespace std;
+
 
 
 struct Edge {
@@ -48,6 +53,7 @@ void run(int mazeNumber) {
     std::cout << "Maze resolution: " << maze.cols << "x" << maze.rows << std::endl;
 
     int nvertices = maze.cols * maze.rows; // TODO
+    vector<vector<pair<int, int>>> g(nvertices);
 
     std::vector<std::vector<Edge>> edges_by_vertex(nvertices);
     for (int j = 0; j < maze.rows; ++j) {
@@ -59,14 +65,38 @@ void run(int mazeNumber) {
 
             // TODO добавьте соотвтетсвующие этому пикселю ребра
 
-            if(j + 1 < maze.rows && i + 1 < maze.cols){
-                cv::Vec3b color1 = maze.at<cv::Vec3b>(j+1, i+1);
-                unsigned char blue1 = color[0];
-                unsigned char green1 = color[1];
-                unsigned char red1 = color[2];
-                if(abs(blue1 - blue) < 30 && abs(red1 - red) < 30 && abs(green1 - green) < 30){
-
-                }
+            if(j + 1 < maze.rows){
+                cv::Vec3b color1 = maze.at<cv::Vec3b>(j+1,i);
+                unsigned char blue1 = color1[0];
+                unsigned char green1 = color1[1];
+                unsigned char red1 = color1[2];
+                int d = round(sqrt((blue - blue1) * (blue - blue1) + (red - red1) * (red - red1) + (green - green1) * (green - green1))) + 1;
+                g[encodeVertex(j,i,maze.rows,maze.cols)].push_back({encodeVertex(j+1,i,maze.rows,maze.cols), d});
+                g[encodeVertex(j+1,i,maze.rows,maze.cols)].push_back({encodeVertex(j,i,maze.rows,maze.cols), d});
+            }if(i+1 < maze.cols){
+                cv::Vec3b color1 = maze.at<cv::Vec3b>(j,i+1);
+                unsigned char blue1 = color1[0];
+                unsigned char green1 = color1[1];
+                unsigned char red1 = color1[2];
+                int d = round(sqrt((blue - blue1) * (blue - blue1) + (red - red1) * (red - red1) + (green - green1) * (green - green1))) + 1;
+                g[encodeVertex(j,i+1,maze.rows,maze.cols)].push_back({encodeVertex(j,i,maze.rows,maze.cols), d});
+                g[encodeVertex(j,i,maze.rows,maze.cols)].push_back({encodeVertex(j,i + 1,maze.rows,maze.cols), d});
+            }if(j>0){
+                cv::Vec3b color1 = maze.at<cv::Vec3b>(j-1,i);
+                unsigned char blue1 = color1[0];
+                unsigned char green1 = color1[1];
+                unsigned char red1 = color1[2];
+                int d = round(sqrt((blue - blue1) * (blue - blue1) + (red - red1) * (red - red1) + (green - green1) * (green - green1))) + 1;
+                g[encodeVertex(j,i,maze.rows,maze.cols)].push_back({encodeVertex(j-1,i,maze.rows,maze.cols), d});
+                g[encodeVertex(j-1,i,maze.rows,maze.cols)].push_back({encodeVertex(j,i,maze.rows,maze.cols), d});
+            }if(i>0){
+                cv::Vec3b color1 = maze.at<cv::Vec3b>(j,i-1);
+                unsigned char blue1 = color1[0];
+                unsigned char green1 = color1[1];
+                unsigned char red1 = color1[2];
+                int d = round(sqrt((blue - blue1) * (blue - blue1) + (red - red1) * (red - red1) + (green - green1) * (green - green1))) + 1;
+                g[encodeVertex(j,i,maze.rows,maze.cols)].push_back({encodeVertex(j,i-1,maze.rows,maze.cols), d});
+                g[encodeVertex(j,i-1,maze.rows,maze.cols)].push_back({encodeVertex(j,i,maze.rows,maze.cols), d});
             }
         }
     }
@@ -85,12 +115,54 @@ void run(int mazeNumber) {
         rassert(false, 324289347238920081);
     }
 
-    const int INF = std::numeric_limits<int>::max();
+
 
     cv::Mat window = maze.clone(); // на этой картинке будем визуализировать до куда сейчас дошла прокладка маршрута
 
-    std::vector<int> distances(nvertices, INF);
+
     // TODO СКОПИРУЙТЕ СЮДА ДЕЙКСТРУ ИЗ ПРЕДЫДУЩЕГО ИСХОДНИКА
+    set<pair<int, int>> edges;
+    edges.insert({0,start});
+    int timer = 1000;
+    const int INF = 1e18;
+    vector<int> d(nvertices,INF);
+    d[start] = 0;
+    vector<int> p(nvertices);
+    while(!edges.empty()){
+        pair<int, int> e = *edges.begin();
+        edges.erase(e);
+        int len = e.first, v = e.second;
+        if(timer == 1000) {
+            cv::Point2i pp = decodeVertex(v, maze.rows, maze.cols);
+            window.at<cv::Vec3b>(pp.y, pp.x) = cv::Vec3b(0, 255, 0);
+            cv::imshow("Maze", window);
+            cv::waitKey(1);
+        }
+        timer--;
+        if(timer<0) timer = 1000;
+        for(auto to: g[v]){
+            if(to.second + len < d[to.first]){
+                edges.erase({d[to.first], to.first});
+                edges.insert({to.second + len, to.first});
+                d[to.first] = to.second + len;
+                p[to.first] = v;
+            }
+        }
+    }
+    cout<<"kek\n";
+    vector<int> ans;
+    ans.reserve(nvertices);
+    ans.push_back(finish);
+    int cur = finish;
+    while(p[cur] != start){
+        ans.push_back(p[cur]);
+        cur = p[cur];
+    }ans.push_back(start);
+    for(int i = ans.size()-1;i>=0;--i) {
+        cv::Point pp = decodeVertex(ans[i], maze.rows,maze.cols);
+        window.at<cv::Vec3b>(pp.y, pp.x) = {0,0,255};
+    }
+
 
     // TODO в момент когда вершина становится обработанной - красьте ее на картинке window в зеленый цвет и показывайте картинку:
     //    cv::Point2i p = decodeVertex(the_chosen_one, maze.rows, maze.cols);
@@ -109,12 +181,13 @@ void run(int mazeNumber) {
     while (cv::waitKey(10) != 27) {
         cv::imshow("Maze", window);
     }
+    cv::imwrite("lesson15/resultsData/maze" + to_string(mazeNumber) + ".png", window);
 }
 
-int main() {
+int32_t main() {
     try {
-        int mazeNumber = 1;
-        run(mazeNumber);
+        //int mazeNumber = 1;
+        for(int mazeNumber = 5;mazeNumber<=5;++mazeNumber) run(mazeNumber);
 
         return 0;
     } catch (const std::exception &e) {
