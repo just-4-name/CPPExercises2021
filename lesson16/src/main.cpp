@@ -16,8 +16,8 @@ using namespace cv;
 
 bool isPixelEmpty(cv::Vec3b color) {
     bool ok = 1;
-    for(auto i : color) {
-        if(i != 0) ok = 0;
+    for(int i = 0;i<3;++i) {
+        if(color[i] != 0) ok = 0;
     }
     return ok;
     // TODO 1 реализуйте isPixelEmpty(color):
@@ -146,10 +146,40 @@ void run(std::string caseName) {
     // При этом сделайте так чтобы самый сильно отличающийся пиксель - всегда был идеально белым (255), т.е. выполните нормировку с учетом того какая максимальная разница яркости присутствует
     // Напоминание - вот так можно выставить цвет в пикселе:
     //  panoDiff.at<cv::Vec3b>(j, i) = cv::Vec3b(blueValue, greenValue, redValue);
+    int m = 0;
+    for(int i = 0; i<pano_rows;++i){
+        for(int j = 0; j<pano_cols; ++j) {
+            Vec3b c1 = pano0.at<Vec3b>(i,j), c2 = pano1.at<Vec3b>(i,j);
+            if(!isPixelEmpty(c1) && !isPixelEmpty(c2)){
+                int x = 0;
+                for(int k=0;k<3;++k){
+                    x += (c1[k] - c2[k]) * (c1[k] - c2[k]);
+                }
+                m = max((int)round(sqrt(x)),m);
+            }
+        }
+    }
+
     for(int i = 0; i<pano_rows;++i){
         for(int j = 0; j<pano_cols;++j){
             Vec3b c1 = pano0.at<Vec3b>(i,j), c2 = pano1.at<Vec3b>(i,j);
-
+            if(isPixelEmpty(c1) && isPixelEmpty(c2)){
+                panoDiff.at<Vec3b>(i,j) = {0,0,0};
+            }else if(isPixelEmpty(c1) || isPixelEmpty(c2)){
+                panoDiff.at<Vec3b>(i,j) = {255,255,255};
+            }else{
+                int x = 0;
+                for(int k=0;k<3;++k){
+                    x += (c1[k] - c2[k]) * (c1[k] - c2[k]);
+                }
+                int d = round(sqrt(x));
+                Vec3b c;
+                //cout<<d<<" "<<m<<endl;
+                for(int k = 0;k<3;++k){
+                    c[k] = d*255/m;
+                }
+                panoDiff.at<Vec3b>(i,j) = c;
+            }
         }
     }
 
@@ -162,7 +192,7 @@ int main() {
         run("1_hanging"); // TODO 3 проанализируйте результаты по фотографиям с дрона - где различие сильное, где малое? почему так?
         run("2_hiking"); // TODO 4 проанализируйте результаты по фотографиям с дрона - где различие сильное, где малое? почему так?
         run("3_aero"); // TODO 5 проанализируйте результаты по фотографиям с дрона - где различие сильное, где малое? почему так?
-        run("4_your_data"); // TODO 6 сфотографируйте что-нибудь сами при этом на второй картинке что-то изменив, проведите анализ
+        //run("4_your_data"); // TODO 6 сфотографируйте что-нибудь сами при этом на второй картинке что-то изменив, проведите анализ
         // TODO 7 проведите анализ результатов на базе Вопросов-Упражнений предложенных в последней статье "Урок 19: панорама и визуализация качества склейки"
 
         return 0;
