@@ -12,16 +12,9 @@
 
 #include <libutils/rasserts.h>
 
-using namespace std;
-using namespace cv;
-
 
 bool isPixelEmpty(cv::Vec3b color) {
-    bool ok = 1;
-    for(int i = 0;i<3;++i) {
-        if(color[i] != 0) ok = 0;
-    }
-    return ok;
+    return false; // TODO скопируйте эту функцию из прошлого задания про построение картинки-визуализации разницы картинок
 }
 
 // Эта функция построит лабиринт - в каждом пикселе будет число которое говорит насколько длинное или короткое ребро выходит из пикселя
@@ -43,20 +36,13 @@ cv::Mat buildTheMaze(cv::Mat pano0, cv::Mat pano1) {
             cv::Vec3b color1 = pano1.at<cv::Vec3b>(j, i);
 
             int penalty = 0; // TODO найдите насколько плохо идти через этот пиксель:
-            if(isPixelEmpty(color0) || isPixelEmpty(color1)) penalty = BIG_PENALTY;
-            else {
-                int x = 0;
-                for(int k=0;k<3;++k){
-                    x += (color1[k] - color0[k]) * (color1[k] - color0[k]);
-                }
-                penalty = max(MIN_PENALTY, (int)round(sqrt(x)));
-            }
             // BIG_PENALTY - если этот пиксель отсутствует в pano0 или в pano1
-            // разница  между цветами этого пикселя в pano0 и в pano1 (но не меньше MIN_PENALTY)
+            // разница между цветами этого пикселя в pano0 и в pano1 (но не меньше MIN_PENALTY)
 
             maze.at<int>(j, i) = penalty;
         }
     }
+
     return maze;
 }
 
@@ -69,91 +55,60 @@ struct Edge {
 };
 
 int encodeVertex(int row, int column, int nrows, int ncolumns) {
-    rassert(row < nrows, 348723894723980017);
-    rassert(column < ncolumns, 347823974239870018);
-    int vertexId = row * ncolumns + column;
-    return vertexId;
+    // TODO скопируйте эту функцию из задания про Дейкстру на картинке лабиринта
+    return 0;
 }
 
-
 cv::Point2i decodeVertex(int vertexId, int nrows, int ncolumns) {
-
-    // TODO: придумайте как найти номер строки и столбика пикселю по номеру вершины (просто поймите предыдущую функцию и эта функция не будет казаться сложной)
-    int row = vertexId/ncolumns;
-    int column = vertexId % ncolumns;
-
-    // сверим что функция симметрично сработала:
-    rassert(encodeVertex(row, column, nrows, ncolumns) == vertexId, 34782974923035);
-
-    rassert(row < nrows, 34723894720027);
-    rassert(column < ncolumns, 3824598237592030);
+    // TODO скопируйте эту функцию из задания про Дейкстру на картинке лабиринта
+    int column = 0;
+    int row = 0;
     return cv::Point2i(column, row);
 }
 
-
-
 // Скопируйте в эту функцию Дейкстру из позапрошлого задания - mainMaze.cpp
-std::vector<cv::Point2i> findBestSeam(cv::Mat maze) {
+std::vector<cv::Point2i> findBestSeam(cv::Mat maze, cv::Point2i startPoint, cv::Point2i finishPoint) {
     rassert(!maze.empty(), 324783479230019);
     rassert(maze.type() == CV_32SC1, 3447928472389020);
     std::cout << "Maze resolution: " << maze.cols << "x" << maze.rows << std::endl;
 
     int nvertices = maze.cols * maze.rows;
-    vector<vector<pair<int, int>>> g(nvertices);
 
+    std::vector<std::vector<Edge>> edges_by_vertex(nvertices);
     for (int j = 0; j < maze.rows; ++j) {
         for (int i = 0; i < maze.cols; ++i) {
+            int w = maze.at<int>(j, i);
 
-            if(j + 1 < maze.rows){
-                int d = maze.at<int>(j+1,i);
-                g[encodeVertex(j,i,maze.rows,maze.cols)].push_back({encodeVertex(j+1,i,maze.rows,maze.cols), d});
-            }if(i+1 < maze.cols){
-                int d = maze.at<int>(j,i+1);
-                g[encodeVertex(j,i,maze.rows,maze.cols)].push_back({encodeVertex(j,i+1,maze.rows,maze.cols), d});
-            }if(j>0){
-                int d = maze.at<int>(j-1,i);
-                g[encodeVertex(j,i,maze.rows,maze.cols)].push_back({encodeVertex(j-1,i,maze.rows,maze.cols), d});
-            }if(i>0){
-                int d = maze.at<int>(j,i-1);
-                g[encodeVertex(j,i,maze.rows,maze.cols)].push_back({encodeVertex(j,i-1,maze.rows,maze.cols), d});
-            }
+            // TODO добавьте в edges_by_vertex ребро вправо и вверх с длинной w
         }
     }
 
-    int start = encodeVertex(maze.rows - 1, 0, maze.rows, maze.cols), finish = encodeVertex(0,maze.cols - 1, maze.rows, maze.cols);
+    int start = encodeVertex(startPoint.y, startPoint.x, maze.rows, maze.cols);
+    int finish = encodeVertex(finishPoint.y, finishPoint.x, maze.rows, maze.cols);
+    rassert(start >= 0 && start < nvertices, 348923840234200127);
+    rassert(finish >= 0 && finish < nvertices, 348923840234200128);
 
-    set<pair<int, int>> edges;
-    edges.insert({0,start});
-    const int INF = 1e9;
-    vector<int> d(nvertices,INF);
-    d[start] = 0;
-    vector<int> p(nvertices);
-    while(!edges.empty()){
-        pair<int, int> e = *edges.begin();
-        edges.erase(e);
-        int len = e.first, v = e.second;
-        for(auto to: g[v]){
-            if(to.second + len < d[to.first]){
-                edges.erase({d[to.first], to.first});
-                edges.insert({to.second + len, to.first});
-                d[to.first] = to.second + len;
-                p[to.first] = v;
-            }
-        }
-    }
-    //cout<<"kek\n";
-    vector<int> ans;
-    ans.push_back(finish);
-    int cur = finish;
-    while(p[cur] != start){
-        ans.push_back(p[cur]);
-        cur = p[cur];
-    }ans.push_back(start);
-    reverse(ans.begin(), ans.end());
-    std::vector<cv::Point2i> pathPoints(ans.size());
-    for (int i = 0; i<ans.size(); ++i) {
-        pathPoints[i] = decodeVertex(ans[i], maze.rows, maze.cols);
-    }
+    const int INF = std::numeric_limits<int>::max();
+
+    std::vector<int> distances(nvertices, INF);
+    // TODO СКОПИРУЙТЕ СЮДА ДЕЙКСТРУ ИЗ ПРЕДЫДУЩЕГО ИСХОДНИКА - mainMaze.cpp
+    // ...
+
+    // убеждаемся что мы добрались до финиша
+//    rassert(processed[finish], 3478289374239000163);
+
+    // TODO извлекаем вершины через которые прошел кратчайший путь:
+    // std::vector<int> path;
+    //int cur = finish;
+    //while (cur != -1) {
+    //    path.push_back(cur);
+    //    cur = parent[cur];
+    //}
+    std::vector<cv::Point2i> pathPoints;
+    //for (int i = path.size() - 1; i >= 0; --i) {
+    //    cv::Point2i p = decodeVertex(path[i], maze.rows, maze.cols);
+    //    pathPoints.push_back(p);
+    //}
     return pathPoints;
 }
 
@@ -164,7 +119,7 @@ void run(std::string caseName) {
     rassert(!img0.empty(), 324789374290018);
     rassert(!img1.empty(), 378957298420019);
 
-    int downscale = 0; // уменьшим картинку в два раза столько раз сколько указано в этой переменной (итоговое уменьшение в 2^downscale раз)
+    int downscale = 2; // уменьшим картинку в два раза столько раз сколько указано в этой переменной (итоговое уменьшение в 2^downscale раз)
     for (int i = 0; i < downscale; ++i) {
         cv::pyrDown(img0, img0); // уменьшаем картинку в два раза (по каждой из осей)
         cv::pyrDown(img1, img1); // уменьшаем картинку в два раза (по каждой из осей)
@@ -267,22 +222,21 @@ void run(std::string caseName) {
 
     // TODO: построим лабиринт (чем больше значение в пикселе - тем "хуже" через него проходить)
     cv::Mat maze = buildTheMaze(pano0, pano1); // TODO реализуйте построение лабиринта на базе похожести наложенных друг на друга картинок
-    cv::imwrite(resultsDir + "1111panoBothNaive.jpg", maze);
+
     // найдем оптимальный шов разделяющий обе картинки (кратчайший путь в лабиринте)
-    //cv::Point2i start(0, pano_rows - 1); // из нижнего левого угла
-    //cv::Point2i finish(pano_cols - 1, 0); // в верхний правый угол
+    cv::Point2i start(0, pano_rows - 1); // из нижнего левого угла
+    cv::Point2i finish(pano_cols - 1, 0); // в верхний правый угол
     std::cout << "Searching for optimal seam..." << std::endl;
-    std::vector<cv::Point2i> seam = findBestSeam(maze);
-    //cout<<"jkanfjknsdvkn";// TODO реализуйте в этой функции Дейкстру
+    std::vector<cv::Point2i> seam = findBestSeam(maze, start, finish); // TODO реализуйте в этой функции Дейкстру
     for (int i = 0; i < seam.size(); ++i) {
-        cv::Point2i pointOnSeam = seam[i];
+        // cv::Point2i pointOnSeam = seam[i];
         // TODO рисуем красный шов там где мы нашли наш лучший шов
-        panoBothNaive.at<cv::Vec3b>(pointOnSeam.y, pointOnSeam.x) = cv::Vec3b(0, 0, 255);
+        // panoBothNaive.at<cv::Vec3b>(???, ???) = cv::Vec3b(0, 0, 255);
     }
     std::cout << "Length of optimal seam: " << seam.size() << " pixels" << std::endl;
     cv::imwrite(resultsDir + "5panoOptimalSeam.jpg", panoBothNaive);
 
-//    // TODO теперь надо поиском в ширину (см. описание на сайте) разметить пиксели:
+    // TODO теперь надо поиском в ширину (см. описание на сайте) разметить пиксели:
     const unsigned char PIXEL_NO_DATA = 0; // черные без информации (не покрыты картинкой)
     const unsigned char PIXEL_IS_ON_SEAM = 1; // те что лежат на шве (через них первая картинка не перешагивает, но в конечном счете давайте на шве рисовать вторую картинку)
     const unsigned char PIXEL_FROM_PANO0 = 100; // те что покрыты первой картинкой (сверху слева от шва)
@@ -290,7 +244,7 @@ void run(std::string caseName) {
     cv::Mat sourceId(pano_rows, pano_cols, CV_8UC1, cv::Scalar(PIXEL_NO_DATA));
     for (int i = 0; i < seam.size(); ++i) {
         // TODO заполните писели лежащие на шве, чтобы легко было понять что через них перешагивать нельзя:
-        sourceId.at<unsigned char>(seam[i].y, seam[i].x) = PIXEL_IS_ON_SEAM;
+        // sourceId.at<unsigned char>(pointOnSeam.y, pointOnSeam.x) = PIXEL_IS_ON_SEAM;
     }
 
     // TODO левый верхний угол - точно из первой картинки - отмечаем его и добавляем в текущую волну для обработки
@@ -298,7 +252,7 @@ void run(std::string caseName) {
     sourceId.at<unsigned char>(leftUpCorner.y, leftUpCorner.x) = PIXEL_FROM_PANO0;
     std::vector<cv::Point2i> curWave;
     curWave.push_back(leftUpCorner);
-    cout<<"KEK";
+
     while (curWave.size() > 0) {
         std::vector<cv::Point2i> nextWave;
         for (int i = 0; i < curWave.size(); ++i) {
@@ -312,33 +266,21 @@ void run(std::string caseName) {
             for (int k = 0; k < 4; ++k) { // смотрим на четырех соседей
                 int nx = p.x + dxs[k];
                 int ny = p.y + dys[k];
-                if(nx >= 0 && nx<sourceId.cols && ny >= 0 && ny < sourceId.rows){
-                    if(sourceId.at<unsigned char>(ny, nx) == PIXEL_NO_DATA){
-                        sourceId.at<unsigned char>(ny, nx) = PIXEL_FROM_PANO0;
-                        nextWave.push_back({nx, ny});
-                    }
-                }
+                // TODO посмотрите на соседний пиксель (nx, ny) и либо отметьте его как покрытый первой картинкой и добавьте в следующую волну, либо проигнорируйте
+                // см. описание на сайте
             }
         }
         curWave = nextWave;
     }
-    cout<<"LOL";
     for (int j = 0; j < pano_rows; ++j) {
         for (int i = 0; i < pano_cols; ++i) {
-            if(sourceId.at<unsigned char>(j,i) == PIXEL_NO_DATA) sourceId.at<unsigned char>(j,i) = PIXEL_FROM_PANO1;
+            // TODO отметьте все остальные пиксели как пиксели второй картинки
         }
     }
     cv::imwrite(resultsDir + "6sourceId.jpg", sourceId);
 
     cv::Mat newPano(pano_rows, pano_cols, CV_8UC3, cv::Scalar(0, 0, 0));
     // TODO постройте новую панораму в соответствии с sourceId картой (забирая цвета из pano0 и pano1)
-    for(int i = 0;i<sourceId.rows;++i){
-        for(int j = 0;j<sourceId.cols;++j){
-            if(sourceId.at<unsigned char>(i,j) == PIXEL_FROM_PANO0){
-                newPano.at<Vec3b>(i,j) = pano0.at<Vec3b>(i,j);
-            }else newPano.at<Vec3b>(i,j) = pano1.at<Vec3b>(i,j);
-        }
-    }
     cv::imwrite(resultsDir + "7newPano.jpg", newPano);
 }
 
