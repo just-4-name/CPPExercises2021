@@ -128,7 +128,7 @@ void run(int caseNumber, std::string caseName) {
     int q = 100;
     int start1 = 0, end1 = image.rows, step1 = 1;
     int start2 = 0, end2 = image.cols, step2 = 1;
-    int lvl = 0;
+    int lvl = 0, cnt1 = 0;
     while (q--) {
         for (int i = 0; i != end1; i += step1) {
             for(int j = start2; j != end2; j+= step2){
@@ -193,25 +193,34 @@ void run(int caseNumber, std::string caseName) {
                 int ni = i + dxy[0], nj = j + dxy[1];
                 int currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
                 if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
-                int di = random.next(-image.rows, image.rows);// на квадрат 5х5 приложенный центром к (nx, ny)
-                int dj = random.next(-image.cols, image.cols);
-                while(1){
+
+                int dh = image.rows;
+                int dw = image.cols;
+
+
+                while(!(dh == 0 && dw == 0)){
                     bool ok = 1;
+                    int di = shifts.at<Vec2i> (i,j)[0] + random.next(-dh,dh);
+                    int dj = shifts.at<Vec2i> (i,j)[1] + random.next(-dw,dw);
                     if(i + di < 0 || i + di >= image.rows) ok = 0;
                     if(j + dj < 0 || j + dj >= image.cols) ok = 0;
                     if(ok && isPixelMasked(image, i+di, j +dj)) ok = 0;
-                    if(ok) break;
-                    else {
-                        di = random.next(-image.rows, image.rows);
-                        dj = random.next(-image.cols, image.cols);
-                    }
+                    if(!ok) continue;
+                    cnt1++;
+                    Vec3b cur = image.at<Vec3b>(i,j);
+                    image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
+                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
+                    if (randomQuality < currentQuality) {
+                        shifts.at<Vec2i>(i,j) = {di,dj};
+                    }else image.at<Vec3b>(i,j) = cur;
+                    dxy = shifts.at<Vec2i> (i,j);
+                    ni = i + dxy[0]; nj = j + dxy[1];
+                    currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
+                    if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
+                    dh /= 2;
+                    dw /= 2;
+
                 }
-                Vec3b cur = image.at<Vec3b>(i,j);
-                image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
-                int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
-                if (randomQuality < currentQuality) {
-                    shifts.at<Vec2i>(i,j) = {di,dj};
-                }else image.at<Vec3b>(i,j) = cur;
             }
         }
         if(start1 == 0){
@@ -223,6 +232,7 @@ void run(int caseNumber, std::string caseName) {
         }
     }
     imwrite(resultsDir + "3_res.png", image);
+    cout<<cnt1/100/cnt;
 }
 
 
