@@ -42,6 +42,7 @@ int estimateQuality(Mat mask, Mat mat, int i, int j, int ni, int nj, int h, int 
     int res = 0;
     for(int di = -h/2; di <=h/2; ++di) {
         for(int dj = -w/2; dj <= w/2; ++dj) {
+            if(di == 0 && dj == 0) continue;
             if(i + di < 0 || ni + di < 0 || i + di >= mat.rows || ni + di >= mat.rows || j + dj < 0 ||
                nj + dj < 0 || j + dj >= mat.cols || nj + dj >= mat.cols) {
                 res += 1e7;
@@ -52,10 +53,22 @@ int estimateQuality(Mat mask, Mat mat, int i, int j, int ni, int nj, int h, int 
             }
             Vec3b a = mat.at<Vec3b> (i + di, j + dj), b = mat.at<Vec3b> (ni + di, nj + dj);
             for(int k = 0; k < 3; ++k) {
-                res += abs(a[k] - b[k]);
+                res +=(a[k] - b[k]) * (a[k] - b[k]);
             }
         }
     }return res;
+}
+
+
+bool isAreaMasked(Mat mask,int i,int j){
+    bool ok = 1;
+    for(int di = -2; di <=2; ++di) {
+        for (int dj = -2; dj <= 2; ++dj) {
+            if(i + di < 0 || i + di >= mask.rows || j + dj < 0 || j + dj >= mask.cols) {
+                return true;
+            }if(isPixelMasked(mask,i+di,j+dj)) return true;
+        }
+    }return false;
 }
 
 
@@ -128,111 +141,131 @@ void run(int caseNumber, std::string caseName) {
     int q = 100;
     int start1 = 0, end1 = image.rows, step1 = 1;
     int start2 = 0, end2 = image.cols, step2 = 1;
-    int lvl = 0, cnt1 = 0;
+    int lvl = 0, cnt1 = 0,h=0;
     while (q--) {
         for (int i = 0; i != end1; i += step1) {
             for(int j = start2; j != end2; j+= step2){
                 if (!isPixelMasked(mask,i,j)) continue; // пропускаем т.к. его менять не надо
-//                if (i > 0 && isPixelMasked(mask, i-1, j)) {
-//                    cv::Vec2i dxy = shifts.at<Vec2i> (i,j);//смотрим какое сейчас смещение для этого пикселя в матрице смещения
-//                    int ni = i + dxy[0], nj = j + dxy[1];
-//                    int currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
-//                    if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
-//                    int di = - 1 + shifts.at<Vec2i>(i-1,j)[0];// на квадрат 5х5 приложенный центром к (nx, ny)
-//                    int dj = shifts.at<Vec2i>(i-1,j)[1];
-//                    Vec3b cur = image.at<Vec3b>(i,j);
-//                    image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
-//                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
-//                    if (randomQuality < currentQuality) {
-//                        shifts.at<Vec2i>(i,j) = {di,dj};
-//                    }else image.at<Vec3b>(i,j) = cur;
-//                }
-//                if(j > 0 && isPixelMasked(mask,i,j-1)) {
-//                    cv::Vec2i dxy = shifts.at<Vec2i> (i,j);//смотрим какое сейчас смещение для этого пикселя в матрице смещения
-//                    int ni = i + dxy[0], nj = j + dxy[1];
-//                    int currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
-//                    if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
-//                    int di = shifts.at<Vec2i>(i,j-1)[0];// на квадрат 5х5 приложенный центром к (nx, ny)
-//                    int dj = shifts.at<Vec2i>(i,j-1)[1] - 1;
-//                    Vec3b cur = image.at<Vec3b>(i,j);
-//                    image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
-//                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
-//                    if (randomQuality < currentQuality) {
-//                        shifts.at<Vec2i>(i,j) = {di,dj};
-//                    }else image.at<Vec3b>(i,j) = cur;
-//                }
-                if(i < image.rows - 1 && isPixelMasked(mask, i + 1, j)) {
+                if (i > 0 && isPixelMasked(mask, i-1, j) && q<99) {
                     cv::Vec2i dxy = shifts.at<Vec2i> (i,j);//смотрим какое сейчас смещение для этого пикселя в матрице смещения
                     int ni = i + dxy[0], nj = j + dxy[1];
                     int currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
-                    if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
+                    //if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
+                    int di = shifts.at<Vec2i>(i-1,j)[0] - 1;// на квадрат 5х5 приложенный центром к (nx, ny)
+                    int dj = shifts.at<Vec2i>(i-1,j)[1];
+                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
+                    if(isAreaMasked(mask,i+di,j+dj)) randomQuality = 1e9 + 19;
+                    if (randomQuality < currentQuality) {
+                        h++;
+                        shifts.at<Vec2i>(i,j) = {di,dj};
+                        image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
+                    }
+                }
+                if(j > 0 && isPixelMasked(mask,i,j-1) && q<99) {
+                    cv::Vec2i dxy = shifts.at<Vec2i> (i,j);//смотрим какое сейчас смещение для этого пикселя в матрице смещения
+                    int ni = i + dxy[0], nj = j + dxy[1];
+                    int currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
+                    //if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
+                    int di = shifts.at<Vec2i>(i,j-1)[0];// на квадрат 5х5 приложенный центром к (nx, ny)
+                    int dj = shifts.at<Vec2i>(i,j-1)[1] - 1;
+                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5);
+                    if(isAreaMasked(mask,i+di,j+dj)) randomQuality = 1e9 + 19;
+                    if (randomQuality < currentQuality) {
+                        h++;
+                        shifts.at<Vec2i>(i,j) = {di,dj};
+                        image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
+                    }
+                }
+                if(i < image.rows - 1 && isPixelMasked(mask, i + 1, j) && q<99) {
+                    cv::Vec2i dxy = shifts.at<Vec2i> (i,j);//смотрим какое сейчас смещение для этого пикселя в матрице смещения
+                    int ni = i + dxy[0], nj = j + dxy[1];
+                    int currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
+                    //if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
                     int di = 1 + shifts.at<Vec2i>(i+1,j)[0];// на квадрат 5х5 приложенный центром к (nx, ny)
                     int dj = shifts.at<Vec2i>(i+1,j)[1];
-                    Vec3b cur = image.at<Vec3b>(i,j);
-                    image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
-                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
+                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5);
+                    if(isAreaMasked(mask,i+di,j+dj)) randomQuality = 1e9 + 19;
                     if (randomQuality < currentQuality) {
+                        h++;
                         shifts.at<Vec2i>(i,j) = {di,dj};
-                    }else image.at<Vec3b>(i,j) = cur;
+                        image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
+                    }
                 }
-                if(j < image.cols - 1 && isPixelMasked(mask, i, j + 1)){
+                if(j < image.cols - 1 && isPixelMasked(mask, i, j + 1) && q < 99){
                     cv::Vec2i dxy = shifts.at<Vec2i> (i,j);//смотрим какое сейчас смещение для этого пикселя в матрице смещения
                     int ni = i + dxy[0], nj = j + dxy[1];
                     int currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
-                    if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
+                    //if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
                     int di = shifts.at<Vec2i>(i,j+1)[0];// на квадрат 5х5 приложенный центром к (nx, ny)
                     int dj = 1 + shifts.at<Vec2i>(i,j+1)[1];
-                    Vec3b cur = image.at<Vec3b>(i,j);
-                    image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
-                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
+                    int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5);
+                    if(isAreaMasked(mask,i+di,j+dj)) randomQuality = 1e9 + 19;
                     if (randomQuality < currentQuality) {
+                        h++;
                         shifts.at<Vec2i>(i,j) = {di,dj};
-                    }else image.at<Vec3b>(i,j) = cur;
+                        image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
+                    }
                 }
                 cv::Vec2i dxy = shifts.at<Vec2i> (i,j);//смотрим какое сейчас смещение для этого пикселя в матрице смещения
                 int ni = i + dxy[0], nj = j + dxy[1];
                 int currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
-                if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
+                //if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
 
                 int dh = image.rows;
                 int dw = image.cols;
 
 
                 while(!(dh == 0 && dw == 0)){
-                    bool ok = 1;
-                    int di = shifts.at<Vec2i> (i,j)[0] + random.next(-dh,dh);
-                    int dj = shifts.at<Vec2i> (i,j)[1] + random.next(-dw,dw);
-                    if(i + di < 0 || i + di >= image.rows) ok = 0;
-                    if(j + dj < 0 || j + dj >= image.cols) ok = 0;
-                    if(ok && isPixelMasked(image, i+di, j +dj)) ok = 0;
-                    if(!ok) continue;
+                    int di,dj;
+                    while(1) {
+                        bool ok = 1;
+                        di = shifts.at<Vec2i>(i, j)[0] + random.next(-dh, dh);
+                        dj = shifts.at<Vec2i>(i, j)[1] + random.next(-dw, dw);
+                        if (i + di < 0 || i + di >= image.rows) continue;
+                        if (j + dj < 0 || j + dj >= image.cols) continue;
+                        if (ok && isPixelMasked(image, i + di, j + dj)) continue;
+                        for(int dy = -2; dy<= 2; ++ dy){
+                            for(int dx = -2; dx <= 2; ++ dx){
+                                if (i + di + dy < 0 || i + di + dy >= image.rows) {
+                                    ok = 0;
+                                    continue;
+                                }
+                                if (j + dj + dx< 0 || j + dj + dx>= image.cols){
+                                    ok = 0;
+                                    continue;
+                                }
+                                if(isPixelMasked(mask,i + di + dy, j + dj + dx)) ok = 0;
+                            }
+                        }
+                        if (ok) break;
+                    }
                     cnt1++;
-                    Vec3b cur = image.at<Vec3b>(i,j);
-                    image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
                     int randomQuality = estimateQuality(mask, image, i, j, i + di, j + dj, 5, 5); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
                     if (randomQuality < currentQuality) {
                         shifts.at<Vec2i>(i,j) = {di,dj};
-                    }else image.at<Vec3b>(i,j) = cur;
+                        image.at<Vec3b>(i,j) = original.at<Vec3b>(i + di, j + dj);
+                    }
                     dxy = shifts.at<Vec2i> (i,j);
                     ni = i + dxy[0]; nj = j + dxy[1];
                     currentQuality = estimateQuality(mask, image, i, j, ni, nj, 5, 5); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
-                    if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
+                    //if(ni == i && nj == j && isPixelMasked(image,i,j)) currentQuality = 1e9;
                     dh /= 2;
                     dw /= 2;
+
 
                 }
             }
         }
         if(start1 == 0){
-                start1 = image.rows - 1; end1 = -1; step1 = -1;
-                start2 = image.cols - 1; end2 = -1; step2 = -1;
+            start1 = image.rows - 1; end1 = -1; step1 = -1;
+            start2 = image.cols - 1; end2 = -1; step2 = -1;
         }else{
             start1 = 0; end1 = image.rows; step1 = 1;
             start2 = 0; end2 = image.cols; step2 = 1;
         }
     }
     imwrite(resultsDir + "3_res.png", image);
-    cout<<cnt1/100/cnt;
+    cout<<cnt1/100/cnt << " "<<h;
 }
 
 
